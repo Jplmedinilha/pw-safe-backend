@@ -42,6 +42,87 @@ router.get('/login', function (req, res, next) {
   })
 })
 
+router.get('/groupList', function (req, res, next) {
+  connection.query('SELECT `name` FROM `groups`;', function (err, rows) {
+    if (err) {
+      console.log(err)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: err })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: rows })
+    }
+  })
+})
+
+router.post('/addGroup', function (req, res, next) {
+
+
+  let post = {
+    name: req.body.group_name,
+    critical_flg: (req.body.critial_flg) ? req.body.critial_flg : 'N'
+  }
+
+  var dbResult = connection.query('INSERT INTO `groups` SET ?', post, function (error, results, fields) {
+    if (error) {
+      console.log(error)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
+    }
+  });
+
+  console.log(dbResult.sql); 
+})
+
+router.delete('/deleteGroup/:name', function (req, res, next) {
+
+  connection.query('DELETE FROM `groups` WHERE `name` = ' + ` '${req.params.name}' ;`, function (error, results, fields) {
+    if (error) {
+      console.log(error)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
+    }
+  })
+})
+
+router.post('/addCredentials', function (req, res, next) {
+
+
+  let post = {
+    userName: req.body.userName,
+    groupName: req.body.groupName,
+    systemName: req.body.systemName,
+    cred_user: req.body.cred_user,
+    cred_pw: req.body.cred_pw
+  }
+
+  var dbResult = connection.query('INSERT INTO stored_credentials SET ?', post, function (error, results, fields) {
+    if (error) {
+      console.log(error)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
+    }
+  });
+
+  console.log(dbResult.sql); 
+})
+
+router.get('/getCredentials/:username', function (req, res, next) {
+
+  let query = 'SELECT a.*, b.critical_flg FROM stored_credentials a INNER JOIN `groups` b ON (a.groupName = b.`name`) '
+
+  if(req.params.username) query += ` WHERE a.userName = '${req.params.username}' `
+
+  connection.query(query, function (err, rows) {
+    if (err) {
+      console.log(err)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: err })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: rows })
+    }
+  })
+})
 
 module.exports = router
 
