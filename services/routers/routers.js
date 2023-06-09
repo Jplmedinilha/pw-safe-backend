@@ -2,6 +2,7 @@ const express = require('express');
 const router = new express.Router();
 var mysql = require('mysql')
 const crypto = require('crypto')
+const CryptoJS = require("crypto-js");
 
 const connection = mysql.createConnection({
   host: process.env.DB_IP,
@@ -52,6 +53,17 @@ router.get('/groupList', function (req, res, next) {
     }
   })
 })
+router.post('/test', function (req, res, next) {
+  
+  connection.query(`SELECT secret FROM users WHERE username = '${req.body.userName}' ;`, function (err, rows) {
+    if (err) {
+      console.log(err)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: err })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: rows })
+    }
+  })
+})
 
 router.post('/addGroup', function (req, res, next) {
 
@@ -87,25 +99,37 @@ router.delete('/deleteGroup/:name', function (req, res, next) {
 
 router.post('/addCredentials', function (req, res, next) {
 
-
-  let post = {
-    userName: req.body.userName,
-    groupName: req.body.groupName,
-    systemName: req.body.systemName,
-    cred_user: req.body.cred_user,
-    cred_pw: req.body.cred_pw
-  }
-
-  var dbResult = connection.query('INSERT INTO stored_credentials SET ?', post, function (error, results, fields) {
-    if (error) {
-      console.log(error)
-      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+  connection.query(`SELECT secret FROM users WHERE username = '${req.body.userName}' ;`, function (err, rows) {
+    if (err) {
+      console.log(err)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: err })
     } else {
-      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
-    }
-  });
+      // console.log(rows[0].secret)
+      var ciphertext = CryptoJS.AES.encrypt(req.body.cred_pw, rows[0].secret).toString();
 
-  console.log(dbResult.sql); 
+      let post = {
+        userName: req.body.userName,
+        groupName: req.body.groupName,
+        systemName: req.body.systemName,
+        cred_user: req.body.cred_user,
+        cred_pw: ciphertext
+      }
+
+      var dbResult = connection.query('INSERT INTO stored_credentials SET ?', post, function (error, results, fields) {
+        if (error) {
+          console.log(error)
+          res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+        } else {
+          res.status(201).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
+        }
+      });
+    
+      console.log(dbResult.sql); 
+
+    }
+  })
+
+  
 })
 
 router.get('/getCredentials/:username', function (req, res, next) {
@@ -120,6 +144,25 @@ router.get('/getCredentials/:username', function (req, res, next) {
       res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: err })
     } else {
       res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: rows })
+    }
+  })
+})
+
+
+router.post('/deleteCredential', function (req, res, next) {
+
+  let query = ` DELETE FROM stored_credentials 
+                  WHERE userName = '${req.body.userName}'
+                    AND groupName = '${req.body.groupName}' 
+                    AND systemName = '${req.body.systemName}' 
+                    AND cred_user = '${req.body.credUser}' ; `
+
+  connection.query(query, function (error, results, fields) {
+    if (error) {
+      console.log(error)
+      res.status(500).json({ STATUS: "500", CODE: "E", MSG: "common.error", RETURN: error })
+    } else {
+      res.status(200).json({ STATUS: "200", CODE: "S", MSG: "common.success", RETURN: results })
     }
   })
 })
